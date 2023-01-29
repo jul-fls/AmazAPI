@@ -88,7 +88,7 @@ function decodeEntities(encodedString) {
 }
 
 
-function parse_commandes(body) {
+async function parse_commandes(body) {
     body = body.replace(/<script type="text\/javascript">if \(typeof uet === "function"\) { uet\('cf'\); }<\/script>/g, "");
     body = body.replace(/<script type="text\/javascript">if \(typeof uet == 'function'\) { uet\('af'\); }<\/script>/g, "");
     $ = cheerio.load(body);
@@ -99,7 +99,7 @@ function parse_commandes(body) {
         orders.each(function(i, el) {
             order_object = {};
             details_link = $(this).find(".a-link-normal.yohtmlc-order-details-link").attr("href");
-            order_object.details_link = process.env.AMAZON_BASE_URL + (details_link.slice(1));
+            order_object.details_link = process.env.AMAZON_BASE_URL + "/" + (details_link.slice(1));
             order_object.orderId = $(this).find("bdi").text();
             shipments_array = [];
             shipments = $(this).find(".shipment");
@@ -108,7 +108,7 @@ function parse_commandes(body) {
                 tracking_link = $(this).find(".track-package-button").children("span").children("a").attr("href");
                 if (tracking_link != undefined) {
                     shipment_object.itemId = tracking_link.split("itemId=")[1].split("&")[0];
-                    shipment_object.tracking_link = process.env.AMAZON_BASE_URL + (tracking_link.split("&packageIndex")[0].slice(1));
+                    shipment_object.tracking_link = process.env.AMAZON_BASE_URL + "/" + (tracking_link.split("&packageIndex")[0].slice(1));
                 }
 
                 statut = $(this).find(".js-shipment-info-container > div > div > span.a-size-medium").text().replaceAll("\n", "").trim();
@@ -128,7 +128,7 @@ function parse_commandes(body) {
                 products.each(function(i, el) {
                     product_object = {};
                     product_object.name = $(this).find(".yohtmlc-item .a-link-normal").text().replaceAll("\n", "").trim();
-                    product_object.link = process.env.AMAZON_BASE_URL + ($(this).find(".yohtmlc-item .a-link-normal").attr("href").slice(1));
+                    product_object.link = process.env.AMAZON_BASE_URL + "/" + ($(this).find(".yohtmlc-item .a-link-normal").attr("href").slice(1));
                     product_object.image = $(this).find(".a-fixed-left-grid-inner > div > div > a > img").attr("data-src");
                     return_text = $(this).find(".yohtmlc-item .a-row.a-size-small").text().replaceAll("\n", "").trim();
                     if (return_text != "") {
@@ -142,8 +142,8 @@ function parse_commandes(body) {
             order_object.shipments = shipments_array;
             order_object.order_date = $(this).find(".a-column.a-span4 .a-color-secondary.value").text().replaceAll("\n", "").trim();
             payment_object = {};
-            payment_object.total_amount = parseFloat($(this).find(".a-column.a-span2 .a-color-secondary.value").text().replaceAll("\n", "").trim().split(" ")[1].replaceAll(",", "."));
-            payment_object.currency = $(this).find(".a-column.a-span2 .a-color-secondary.value").text().replaceAll("\n", "").trim().split(" ")[0];
+            payment_object.total_amount = parseFloat($(this).find(".a-column.a-span2 .a-color-secondary.value").text().replaceAll("\n", "").trim().replaceAll(",", ".").substring(1));
+            payment_object.currency = ($(this).find(".a-column.a-span2 .a-color-secondary.value").text().replaceAll("\n", "").trim().split(" ")[0])[0];
             order_object.payment = payment_object;
             orders_array.push(order_object);
         });
@@ -181,21 +181,21 @@ function parse_commandes_details(body) {
     order_details_object.date = date_arr[date_arr.length - 3] + " " + date_arr[date_arr.length - 2] + " " + date_arr[date_arr.length - 1];
 
     order_address_object = {};
-    order_address_object.fullname = $(".displayAddressFullName").text();
+    order_address_object.fullname = $(".displayAddressFullName").html().split("<")[0].trim();
     order_address_object.address = $(".displayAddressAddressLine1").text();
     order_address_object.city = $(".displayAddressCityStateOrRegionPostalCode").text().split(",")[0];
-    order_address_object.zipcode = $(".displayAddressCityStateOrRegionPostalCode").text().split(",  ")[1];
+    order_address_object.zipcode = $(".displayAddressCityStateOrRegionPostalCode").text().split(", ")[1].split(" ")[1];
     order_address_object.country = $(".displayAddressCountryName").text();
     order_details_object.address = order_address_object;
 
     order_payment_object = {};
     order_payment_object.method = $(".a-section .a-spacing-none").children("div").children("img").attr("alt");
-    order_payment_object.number = parseInt($(".a-section .a-spacing-none").children("div").children("span").text().split(" ")[1]);
+    order_payment_object.last4digits = $(".a-section .a-spacing-none").children("div").children("span").text().split(" ")[1];
     order_payment_object.card_image = $(".a-section .a-spacing-none").children("div").children("img").attr("src");
     order_details_object.payment = order_payment_object;
 
     order_summary_object = {};
-    order_summary_object.currency = $(".a-column.a-span5.a-text-right.a-span-last").first().children().first().text().replaceAll(" ", "").replaceAll("\n", "").substring(0, 3);
+    order_summary_object.currency = $(".a-column.a-span5.a-text-right.a-span-last").first().children().first().text().replaceAll(" ", "").replaceAll("\n", "")[0];
     order_summary_object.items_ht = parseFloat($("#od-subtotals > div:nth-child(2) > div.a-column.a-span5.a-text-right.a-span-last > span").text().replaceAll(" ", "").replaceAll("\n", "").substring(3).replace(",", "."));
     order_summary_object.shipping_ht = parseFloat($("#od-subtotals > div:nth-child(3) > div.a-column.a-span5.a-text-right.a-span-last > span").text().replaceAll(" ", "").replaceAll("\n", "").substring(3).replace(",", "."));
     order_summary_object.total_ht = parseFloat($("#od-subtotals > div:nth-child(5) > div.a-column.a-span5.a-text-right.a-span-last > span").text().replaceAll(" ", "").replaceAll("\n", "").substring(3).replace(",", "."));
@@ -209,7 +209,7 @@ function parse_commandes_details(body) {
         order_transaction_object = {};
         order_transaction_object.date = el.children[0].data.replaceAll("\n", "").split("-")[0].trim();
         order_transaction_object.amount = parseFloat(el.children[0].data.replaceAll("\n", "").replaceAll(" ", "").split(":")[1].substring(3).replace(",", "."));
-        order_transaction_object.currency = el.children[0].data.replaceAll("\n", "").replaceAll(" ", "").split(":")[1].substring(0, 3);
+        order_transaction_object.currency = el.children[0].data.replaceAll("\n", "").replaceAll(" ", "").split(":")[1].substring(0);
         order_transaction_object.card_type = el.children[0].data.split("-")[1].trim().split(" ")[0];
         order_transaction_object.card_number = parseInt(el.children[0].data.split(":")[0].slice(-4));
         order_transactions_array.push(order_transaction_object);
@@ -221,7 +221,7 @@ function parse_commandes_details(body) {
     order_invoices.each(function(i, el) {
         order_invoice_object = {};
         order_invoice_object.name = el.children[0].data.replaceAll("\n", "").trim();
-        order_invoice_object.link = process.env.AMAZON_BASE_URL + (el.attribs.href.slice(1));
+        order_invoice_object.link = process.env.AMAZON_BASE_URL + "/" + (el.attribs.href.slice(1));
         order_billing_array.push(order_invoice_object);
     });
     order_details_object.billing = order_billing_array;

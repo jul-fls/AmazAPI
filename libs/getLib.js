@@ -5,13 +5,13 @@ $req = request.defaults({ jar: true });
 
 async function get_commandes(duration, index = 0, callback) {
     if (duration == 'last30') {
-        $url = process.env.AMAZON_BASE_URL + 'gp/css/order-history?ie=UTF8&orderFilter=last30&startIndex=' + index;
+        $url = process.env.AMAZON_BASE_URL + '/gp/css/order-history?ie=UTF8&orderFilter=last30&startIndex=' + index;
     } else if (duration == 'last90') {
-        $url = process.env.AMAZON_BASE_URL + 'gp/css/order-history?ie=UTF8&orderFilter=months-3&startIndex=' + index;
+        $url = process.env.AMAZON_BASE_URL + '/gp/css/order-history?ie=UTF8&orderFilter=months-3&startIndex=' + index;
     } else if (parseInt(duration) > 1999) {
-        $url = process.env.AMAZON_BASE_URL + 'gp/css/order-history?ie=UTF8&orderFilter=year-' + duration + '&startIndex=' + index;
+        $url = process.env.AMAZON_BASE_URL + '/gp/css/order-history?ie=UTF8&orderFilter=year-' + duration + '&startIndex=' + index;
     } else {
-        $url = process.env.AMAZON_BASE_URL + 'gp/css/order-history?ie=UTF8&orderFilter=last30&startIndex=' + index;
+        $url = process.env.AMAZON_BASE_URL + '/gp/css/order-history?ie=UTF8&orderFilter=last30&startIndex=' + index;
     }
     //read cookies from file
     $cookies = fs.readFileSync('cookies.txt', 'utf8');
@@ -32,7 +32,7 @@ async function get_commandes(duration, index = 0, callback) {
 }
 
 function get_commandes_details($orderId, callback) {
-    $url = process.env.AMAZON_BASE_URL + 'gp/your-account/order-details/ref=ppx_yo_dt_b_order_details_o00?ie=UTF8&orderID=' + $orderId;
+    $url = process.env.AMAZON_BASE_URL + '/gp/your-account/order-details/ref=ppx_yo_dt_b_order_details_o00?ie=UTF8&orderID=' + $orderId;
     $cookies = fs.readFileSync('cookies.txt', 'utf8');
     $req({
         jar: true,
@@ -51,7 +51,7 @@ function get_commandes_details($orderId, callback) {
 }
 
 function get_tracking_infos($orderId, $itemId, callback) {
-    $url = process.env.AMAZON_BASE_URL + 'progress-tracker/package/ref=ppx_yo_dt_b_track_package?_encoding=UTF8&orderId=' + $orderId + '&itemId=' + $itemId;
+    $url = process.env.AMAZON_BASE_URL + '/progress-tracker/package/ref=ppx_yo_dt_b_track_package?_encoding=UTF8&orderId=' + $orderId + '&itemId=' + $itemId;
     $cookies = fs.readFileSync('cookies.txt', 'utf8');
     $req({
         jar: true,

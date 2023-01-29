@@ -65,23 +65,35 @@ var authLib = require('./libs/authLib');
 //     );
 // }
 duration = "last30";
-orders_array = new Array();
 async function main() {
+    // authLib.login_amazon();
     await getLib.get_commandes(duration, 0,
         async function(body) {
-            miscLib.save_html(body);
-            await parsingLib.commandes_get_number_pages(body).then(
-                pages_array.forEach((pageIndex) => {
-                    console.log("loop " + pageIndex);
-                    getLib.get_commandes(duration, pageIndex,
-                        async function(body) {
-                            orders = await parsingLib.parse_commandes(body);
-                            orders_array.concat(orders);
-                            console.log(orders);
-                            console.log("page " + pageIndex)
-                        }
-                    );
-                })
+            miscLib.save_html(body.replace(/\\n/g, '\n').replace(/\\r/g, '\r').replace(/\\t/g, '\t'));
+            // await parsingLib.commandes_get_number_pages(body).then(
+            //     pages_array.forEach((pageIndex) => {
+            //         console.log("loop " + pageIndex);
+            //         getLib.get_commandes(duration, pageIndex,
+            //             async function(body) {
+            //                 orders = await parsingLib.parse_commandes(body);
+            //                 orders_array.concat(orders);
+            //                 console.log(orders);
+            //                 console.log("page " + pageIndex)
+            //             }
+            //         );
+            //     })
+            // )
+            await parsingLib.parse_commandes(body).then(
+                function(orders_array) {
+                    //foreach order get details
+                    orders_array.forEach((order) => {
+                        getLib.get_commandes_details(order.orderId, function(body) {
+                            // console.log("order " + order.orderId);
+                            console.log(parsingLib.parse_commandes_details(body));
+                            order.orderDetails = parsingLib.parse_commandes_details(body);
+                        });
+                    });
+                }
             )
         }
     ).then(
@@ -92,6 +104,6 @@ async function main() {
     )
 }
 main();
-console.log("orders_array");
-console.log(orders_array);
+// console.log("orders_array");
+// console.log(orders_array);
 // console.log(orders);

@@ -19,7 +19,7 @@ async function login_amazon() {
     await page.click('#continue');
     console.log("Typing password...");
     await page.waitForNavigation({ waitUntil: 'networkidle0' });
-    await page.type('#ap_password', process.env.AMAZON_PASSWORD);
+    await page.type('#ap_password', Buffer.from(process.env.AMAZON_PASSWORD, 'base64').toString('ascii'));
     await page.click('#signInSubmit');
     console.log("Waiting for OTP...");
     await page.waitForNavigation({ waitUntil: 'networkidle0' });
@@ -28,7 +28,7 @@ async function login_amazon() {
     if (await page.$('#auth-mfa-otpcode') !== null) {
         console.log("2FA is enabled");
         await page.waitForSelector('#auth-mfa-otpcode');
-        await page.type('#auth-mfa-otpcode', otpLib.get_otp_code(process.env.OTP_SECRET));
+        await page.type('#auth-mfa-otpcode', otpLib.get_otp_code(process.env.AMAZON_OTP_SECRET));
         await page.click('#auth-signin-button');
         console.log("Waiting for OTP...");
     }
@@ -38,7 +38,7 @@ async function login_amazon() {
     process.env.AMAZON_COOKIES = cookiesString;
     await browser.close();
     //save cookies to file
-    fs.writeFile("cookies.txt", cookiesString, function (err) {
+    fs.writeFile("cookies.txt", cookiesString, function(err) {
         if (err) {
             return console.log(err);
         }
