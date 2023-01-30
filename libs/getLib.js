@@ -69,6 +69,30 @@ function get_tracking_infos($orderId, $itemId, callback) {
     });
 }
 
+function getFile($url, $filename, callback) {
+    $cookies = fs.readFileSync('cookies.txt', 'utf8');
+    $req({
+        jar: true,
+        method: 'GET',
+        url: $url,
+        headers: {
+            'Cookie': $cookies
+        }
+    }, function(error, response, body) {
+        if (error) {
+            console.log(error);
+        } else {
+            fs.writeFileSync($filename, body, function(error) {
+                if (error) {
+                    return console.log(error);
+                }
+                console.log('The file was saved!');
+            });
+            callback(body);
+        }
+    });
+}
+
 module.exports = {
     get_commandes: get_commandes,
     get_commandes_details: get_commandes_details,
