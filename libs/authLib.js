@@ -3,7 +3,6 @@ const puppeteer = require('puppeteer');
 var fs = require('fs');
 async function login_amazon() {
     const browser = await puppeteer.launch({
-        args: ['--no-sandbox', '--disable-setuid-sandbox'],
         executablePath: '/usr/bin/chromium'
     });
     const page = await browser.newPage();
