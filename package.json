@@ -14,7 +14,7 @@
     "fs": "^0.0.1-security",
     "jshint": "^2.13.5",
     "jssha": "^3.3.0",
-    "puppeteer": "^19.3.0",
+    "puppeteer": "^=19.6.0",
     "request": "^2.88.2",
     "selenium-webdriver": "^4.6.1",
     "totp-generator": "^0.0.14",
