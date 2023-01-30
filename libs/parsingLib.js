@@ -147,7 +147,10 @@ async function parse_commandes(body) {
             order_object.payment = payment_object;
             orders_array.push(order_object);
         });
-
+        //sort orders by order date
+        orders_array.sort(function(a, b) {
+            return new Date(b.order_date) - new Date(a.order_date);
+        });
         return orders_array;
     } else {
         return false;
@@ -196,11 +199,11 @@ function parse_commandes_details(body) {
 
     order_summary_object = {};
     order_summary_object.currency = $(".a-column.a-span5.a-text-right.a-span-last").first().children().first().text().replaceAll(" ", "").replaceAll("\n", "")[0];
-    order_summary_object.items_ht = parseFloat($("#od-subtotals > div:nth-child(2) > div.a-column.a-span5.a-text-right.a-span-last > span").text().replaceAll(" ", "").replaceAll("\n", "").substring(3).replace(",", "."));
-    order_summary_object.shipping_ht = parseFloat($("#od-subtotals > div:nth-child(3) > div.a-column.a-span5.a-text-right.a-span-last > span").text().replaceAll(" ", "").replaceAll("\n", "").substring(3).replace(",", "."));
-    order_summary_object.total_ht = parseFloat($("#od-subtotals > div:nth-child(5) > div.a-column.a-span5.a-text-right.a-span-last > span").text().replaceAll(" ", "").replaceAll("\n", "").substring(3).replace(",", "."));
-    order_summary_object.tva = parseFloat($("#od-subtotals > div:nth-child(6) > div.a-column.a-span5.a-text-right.a-span-last > span").text().replaceAll(" ", "").replaceAll("\n", "").substring(3).replace(",", "."));
-    order_summary_object.total_ttc = parseFloat($("#od-subtotals > div:nth-child(8) > div.a-column.a-span5.a-text-right.a-span-last > span").text().replaceAll(" ", "").replaceAll("\n", "").substring(3).replace(",", "."));
+    order_summary_object.items_ht = parseFloat($("#od-subtotals > div:nth-child(2) > div.a-column.a-span5.a-text-right.a-span-last > span").text().replaceAll(" ", "").replaceAll("\n", "").substring(1).replace(",", "."));
+    order_summary_object.shipping_ht = parseFloat($("#od-subtotals > div:nth-child(3) > div.a-column.a-span5.a-text-right.a-span-last > span").text().replaceAll(" ", "").replaceAll("\n", "").substring(1).replace(",", "."));
+    order_summary_object.total_ht = parseFloat($("#od-subtotals > div:nth-child(5) > div.a-column.a-span5.a-text-right.a-span-last > span").text().replaceAll(" ", "").replaceAll("\n", "").substring(1).replace(",", "."));
+    order_summary_object.tva = parseFloat($("#od-subtotals > div:nth-child(6) > div.a-column.a-span5.a-text-right.a-span-last > span").text().replaceAll(" ", "").replaceAll("\n", "").substring(1).replace(",", "."));
+    order_summary_object.total_ttc = parseFloat($("#od-subtotals > div:nth-last-child(-n + 1) > div.a-column.a-span5.a-text-right.a-span-last > span").text().replaceAll(" ", "").replaceAll("\n", "").substring(1).replace(",", "."));
     order_details_object.summary = order_summary_object;
 
     order_transactions_array = [];
@@ -208,8 +211,8 @@ function parse_commandes_details(body) {
     order_transactions.each(function(i, el) {
         order_transaction_object = {};
         order_transaction_object.date = el.children[0].data.replaceAll("\n", "").split("-")[0].trim();
-        order_transaction_object.amount = parseFloat(el.children[0].data.replaceAll("\n", "").replaceAll(" ", "").split(":")[1].substring(3).replace(",", "."));
-        order_transaction_object.currency = el.children[0].data.replaceAll("\n", "").replaceAll(" ", "").split(":")[1].substring(0);
+        order_transaction_object.amount = parseFloat(el.children[0].data.replaceAll("\n", "").replaceAll(" ", "").split(":")[1].substring(1).replace(",", "."));
+        order_transaction_object.currency = el.children[0].data.replaceAll("\n", "").replaceAll(" ", "").split(":")[1].substring(0)[0];
         order_transaction_object.card_type = el.children[0].data.split("-")[1].trim().split(" ")[0];
         order_transaction_object.card_number = parseInt(el.children[0].data.split(":")[0].slice(-4));
         order_transactions_array.push(order_transaction_object);
