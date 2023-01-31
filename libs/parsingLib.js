@@ -12,16 +12,31 @@ function parse_tracking_infos(body) {
         });
         courrier = courrier_array[courrier_array.length - 1];
         courrier = courrier.replace("\n", "");
-        statut_array = $("#primarystatut").text().split(" ");
-        statut_array = statut_array.map(function(item) {
+        status_array = $("#primarystatut").text().split(" ");
+        status_array = status_array.map(function(item) {
             return item.replace('\n', '');
         });
-        statut_array = statut_array.filter(function(n) {
+        status_array = status_array.filter(function(n) {
             return n != "";
         });
-        statut_str = statut_array[0];
+        status_str = status_array[0];
         track_infos_object.courrier = courrier;
-        track_infos_object.statut = statut_str;
+        track_infos_object.status = status_str;
+        //if lowercase body contains "locker"
+        if (body.toLowerCase().includes("locker")) {
+            track_infos_object.is_locker = true;
+        } else {
+            track_infos_object.is_locker = false;
+        }
+        if(track_infos_object.is_locker) {
+            pickup_code_raw = $("#pickupInformation-container > h1").text().split(":")[1];
+            if(pickup_code_raw != undefined) {
+                pickup_code = pickup_code_raw.trim();
+                barcode = $("#pickupInformation-container > img").attr("src");
+                track_infos_object.pickup_code = pickup_code;
+                track_infos_object.barcode = barcode;
+            }
+        }
         tracking_number = $("#tracking-events-container > div > div.a-row.tracking-event-trackingId-text > h4").html().split("\n")[1].split(":")[1].trim();
         track_infos_object.tracking_number = tracking_number;
         updates = $("#tracking-events-container > div > div > div");
@@ -111,14 +126,21 @@ async function parse_commandes(body) {
                     shipment_object.tracking_link = process.env.AMAZON_BASE_URL + "/" + (tracking_link.split("&packageIndex")[0].slice(1));
                 }
 
-                statut = $(this).find(".js-shipment-info-container > div > div > span.a-size-medium").text().replaceAll("\n", "").trim();
+                status = $(this).find(".js-shipment-info-container > div > div > span.a-size-medium").text().replaceAll("\n", "").trim();
+                status_color = $(this).find(".js-shipment-info-container > div:not([class]) span[class*=color]").attr("class").split("a-color-")[1].split(" ")[0];
+                if (status_color == "success") {
+                    is_delivered = false;
+                } else {
+                    is_delivered = true;
+                }
+                shipment_object.is_delivered = is_delivered;
                 description = $(this).find(".js-shipment-info-container > div > div > div.a-row").text().replaceAll("\n", "").trim();
                 if (description == "") {
                     description = $(this).find(".js-shipment-info-container > div > div > span.a-color-secondary").text().replaceAll("\n", "").trim();
                 }
 
-                if (statut != "") {
-                    shipment_object.statut = statut;
+                if (status != "") {
+                    shipment_object.status = status;
                 }
                 if (description != "") {
                     shipment_object.description = description;
@@ -128,11 +150,19 @@ async function parse_commandes(body) {
                 products.each(function(i, el) {
                     product_object = {};
                     product_object.name = $(this).find(".yohtmlc-item .a-link-normal").text().replaceAll("\n", "").trim();
-                    product_object.link = process.env.AMAZON_BASE_URL + "/" + ($(this).find(".yohtmlc-item .a-link-normal").attr("href").slice(1));
-                    product_object.image = $(this).find(".a-fixed-left-grid-inner > div > div > a > img").attr("data-src");
+                    product_object.link = process.env.AMAZON_BASE_URL + "/" + ($(this).find(".yohtmlc-item .a-link-normal").attr("href").slice(1)).split("/ref")[0];
+                    img = $(this).find(".a-fixed-left-grid-inner > div > div > a > img").attr("data-src");
+                    if(img == undefined) {
+                        img = $(this).find(".a-fixed-left-grid-inner > div > div > a > img").attr("src");
+                    }
+                    product_object.image = img;
                     return_text = $(this).find(".yohtmlc-item .a-row.a-size-small").text().replaceAll("\n", "").trim();
                     if (return_text != "") {
                         product_object.return_text = return_text;
+                    }
+                    product_item_id = $(this).find('.yohtmlc-item .a-row .a-button-inner > a[href*="ItemId="]').attr("href");
+                    if(product_item_id != undefined) {
+                        product_object.itemId = product_item_id.split("ItemId=")[1].split("&")[0];
                     }
                     products_array.push(product_object);
                 });
@@ -141,10 +171,48 @@ async function parse_commandes(body) {
             });
             order_object.shipments = shipments_array;
             order_object.order_date = $(this).find(".a-column.a-span4 .a-color-secondary.value").text().replaceAll("\n", "").trim();
+            //convert date like "20 janvier 2023" to "20/01/2023" and make it work internationally
+            order_object.order_date = new Date(order_object.order_date.split(" ")[1] + "/" + order_object.order_date.split(" ")[0] + "/" + order_object.order_date.split(" ")[2]);
+            //format date to "01/06/2021" and add leading 0
+            order_object.order_date = ("0" + order_object.order_date.getDate()).slice(-2) + "/" + ("0" + (order_object.order_date.getMonth() + 1)).slice(-2) + "/" + order_object.order_date.getFullYear();
             payment_object = {};
             payment_object.total_amount = parseFloat($(this).find(".a-column.a-span2 .a-color-secondary.value").text().replaceAll("\n", "").trim().replaceAll(",", ".").substring(1));
             payment_object.currency = ($(this).find(".a-column.a-span2 .a-color-secondary.value").text().replaceAll("\n", "").trim().split(" ")[0])[0];
             order_object.payment = payment_object;
+
+            order_delivery_infos_raw = $(this).find('span[data-a-popover*="recipient-address"]').attr("data-a-popover");
+            fixedJsonString = order_delivery_infos_raw.replace(/\\u[\dA-Fa-f]{4}/g, (match) => {
+                return String.fromCharCode(parseInt(match.replace(/\\u/g, ''), 16));
+            });
+              
+            order_delivery_infos = fixedJsonString.replaceAll(`\\n`,"").replaceAll(`\\`,"").split('displayAddressUL">')[1].split('</ul>')[0].trim()
+            delivery_infos_object = {};
+            liArray = order_delivery_infos.split('</li>');
+            liArray.pop();
+            liArray.forEach(li => {
+            className = li.match(/displayAddress\w+/g)[1].replace('displayAddress', '');
+            value = li.split('>')[1].trim();
+            if (className === 'FullName') {
+                delivery_infos_object.name = value.trim();
+            } else if (className === 'AddressLine1') {
+                delivery_infos_object.address = value.trim();
+            } else if (className === 'CityStateOrRegionPostalCode') {
+                [city, zipcode] = value.split(', ');
+                delivery_infos_object.city = city.trim();
+                delivery_infos_object.zipcode = zipcode.trim();
+            } else if (className === 'CountryName') {
+                delivery_infos_object.country = value.trim();
+            } else if (className === 'PhoneNumber') {
+                phoneNumber = li.split('>')[2].split('<')[0].trim();
+                delivery_infos_object.phonenumber = phoneNumber;
+            }
+            });
+            if (delivery_infos_object.name.toLowerCase().includes("locker")) {
+                delivery_infos_object.is_locker = true;
+            } else {
+                delivery_infos_object.is_locker = false;
+            }
+            order_object.delivery_infos = delivery_infos_object;
             orders_array.push(order_object);
         });
         //sort orders by order date
