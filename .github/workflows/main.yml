@@ -1,0 +1,16 @@
+name: Continuous Integration
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - main
+jobs:
+  build:
+    runs-on: vps
+    env: 
+      CI_COMMIT_MESSAGE: Continuous Integration Build Artifacts
+      CI_COMMIT_AUTHOR: Continuous Integration
+    steps:
+    - uses: actions/checkout@v3
