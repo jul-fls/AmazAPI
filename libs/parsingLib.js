@@ -1,5 +1,8 @@
 var cheerio = require('cheerio');
 require('dotenv').config();
+const { parse, format } = require('date-fns');
+const { fr } = require('date-fns/locale');
+var miscLib = require('./miscLib');
 
 function parse_tracking_infos(body) {
     $ = cheerio.load(body);
@@ -12,7 +15,7 @@ function parse_tracking_infos(body) {
         });
         courrier = courrier_array[courrier_array.length - 1];
         courrier = courrier.replace("\n", "");
-        status_array = $("#primarystatut").text().split(" ");
+        status_array = $("#primaryStatus").text().split(" ");
         status_array = status_array.map(function(item) {
             return item.replace('\n', '');
         });
@@ -102,8 +105,11 @@ function decodeEntities(encodedString) {
     });
 }
 
-
 async function parse_commandes(body) {
+    filename = "htmls/commandes_";
+    //genrate a 10 char random string (from scrath there's not such function in miscLib)
+    filename += miscLib.get_random_string(10)+".html";
+    await miscLib.save_content_to_file(body, filename);
     body = body.replace(/<script type="text\/javascript">if \(typeof uet === "function"\) { uet\('cf'\); }<\/script>/g, "");
     body = body.replace(/<script type="text\/javascript">if \(typeof uet == 'function'\) { uet\('af'\); }<\/script>/g, "");
     $ = cheerio.load(body);
@@ -171,10 +177,9 @@ async function parse_commandes(body) {
             });
             order_object.shipments = shipments_array;
             order_object.order_date = $(this).find(".a-column.a-span4 .a-color-secondary.value").text().replaceAll("\n", "").trim();
-            //convert date like "20 janvier 2023" to "20/01/2023" and make it work internationally
-            order_object.order_date = new Date(order_object.order_date.split(" ")[1] + "/" + order_object.order_date.split(" ")[0] + "/" + order_object.order_date.split(" ")[2]);
-            //format date to "01/06/2021" and add leading 0
-            order_object.order_date = ("0" + order_object.order_date.getDate()).slice(-2) + "/" + ("0" + (order_object.order_date.getMonth() + 1)).slice(-2) + "/" + order_object.order_date.getFullYear();
+            const parsedDate = parse(order_object.order_date, 'd MMMM yyyy', new Date(), { locale: fr });
+            const formattedDate = format(parsedDate, 'dd/MM/yyyy');
+            order_object.order_date = formattedDate;
             payment_object = {};
             payment_object.total_amount = parseFloat($(this).find(".a-column.a-span2 .a-color-secondary.value").text().replaceAll("\n", "").trim().replaceAll(",", ".").substring(1));
             payment_object.currency = ($(this).find(".a-column.a-span2 .a-color-secondary.value").text().replaceAll("\n", "").trim().split(" ")[0])[0];
@@ -219,6 +224,9 @@ async function parse_commandes(body) {
         orders_array.sort(function(a, b) {
             return new Date(b.order_date) - new Date(a.order_date);
         });
+        filename = filename.replace(".html", ".json");
+        filename = filename.replace("htmls", "jsons");
+        await miscLib.save_content_to_file(JSON.stringify(orders_array), filename);
         return orders_array;
     } else {
         return false;
@@ -260,9 +268,9 @@ function parse_commandes_details(body) {
     order_details_object.address = order_address_object;
 
     order_payment_object = {};
-    order_payment_object.method = $(".a-section .a-spacing-none").children("div").children("img").attr("alt");
-    order_payment_object.last4digits = $(".a-section .a-spacing-none").children("div").children("span").text().split(" ")[1];
-    order_payment_object.card_image = $(".a-section .a-spacing-none").children("div").children("img").attr("src");
+    order_payment_object.method = $(".pmts-payment-credit-card-instrument-logo").attr("alt");
+    order_payment_object.card_number = parseInt($(".pmts-payment-credit-card-instrument-logo").next().next().text().split("-")[1]);
+    order_payment_object.card_image = $(".pmts-payment-credit-card-instrument-logo").attr("src");
     order_details_object.payment = order_payment_object;
 
     order_summary_object = {};
